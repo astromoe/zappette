@@ -1,3 +1,3 @@
 # zappette
 
-http://suburbialost.com/zappette/
+http://www.sitena.me/zappette/
