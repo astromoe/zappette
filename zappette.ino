@@ -6,10 +6,10 @@
   Todo:
   - Add override off with knife switch A6 on shiftin
   - Add sounds
-  - Add sleep hours
-    - turns off iLEDPin
-    - closes/opens eyes
-
+  - Randomize mouth on each new song
+  - Rewire alarm switch to independent power
+  - Stop preloading clock
+  
  ***/
 // Load libraries
 #include <Wire.h>
@@ -34,8 +34,8 @@ Adafruit_7segment clck    = Adafruit_7segment(); // Clock
 #define snzDegrade 1      // amount of mins for to degrade time by
 #define snzLmt 1          // number of times to loop before degrading
 #define snzUnlmt 1        // set to 1 if you want unlimited snoozing or zero for degraded snooze
-#define sleepHour 19      // Hour at which system goes to sleep (meaning we close eyes and stop making sounds)
-#define wakeHour 6        // Hour at which system wakes up
+#define sleepHour 20      // Hour at which system goes to sleep (meaning we close eyes and stop making sounds)
+#define wakeHour 7        // Hour at which system wakes up
 #define QSIZE 10          // Size of the music queue to randomize
 #define EYEFRAMESPEED 75  // The speed of frames for eye animation
 #define MAX_DISTANCE 200  // Maximum distance we want to ping for (in centimeters). Maximum sensor distance is rated at 400-500cm.
@@ -797,12 +797,14 @@ void chkSleep()
     isAsleep = true;
     mouthAsleep();
     eyeClose();
+    digitalWrite(iLedPin, false);
   }
   else if (RTC.hour >= wakeHour && RTC.hour < sleepHour && isAsleep)
   {
     isAsleep = false;
     eyeOpen();
     mouthScrollText(F("Robot is online!"),false);
+    digitalWrite(iLedPin, true);
   }
 }
 void chkSonar()
@@ -1132,9 +1134,7 @@ void writeAlarmNumber()
 
 void chkSnzLed()
 {
-  // TODO: remove internalLedPin and use with a clock
-  digitalWrite(iLedPin, alarmSwt.state());
-  digitalWrite(snzLedPin, alarmSwt.state());
+  digitalWrite(snzLedPin, alarmOn == 1);
 }
 
 void incClock(char field)
