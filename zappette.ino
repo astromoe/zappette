@@ -4,11 +4,7 @@
    Kevin Stephens
 
   Todo:
-  - Add override off with knife switch A6 on shiftin
-  - Add sounds
-  - Randomize mouth on each new song
   - Rewire alarm switch to independent power
-  - Stop preloading clock
   
  ***/
 // Load libraries
@@ -98,6 +94,8 @@ DebounceFilter stopBtn;
 int volVal = 0; // Volume
 int m1st;         // First file for music
 int mCnt;         // The count of files for music
+int s1st;         // First file for RANDOM sound effects
+int sCnt;         // The count of files for sound effects
 int qS;           // Queue start
 int qP = 0;       // Queue Position
 int lQ[2];        // Last queue
@@ -704,9 +702,9 @@ void setup() {
   pinMode(BDPin, INPUT);
 
   // Setup the clock
-  RTC.fillByYMD(2018, 4, 1);
-  RTC.fillByHMS(6, 59, 57);
-  RTC.setTime();
+  //RTC.fillByYMD(2018, 4, 1);
+  //RTC.fillByHMS(6, 59, 57);
+  //RTC.setTime();
   RTC.startClock();
   clck.begin(0x77);
 
@@ -730,6 +728,9 @@ void setup() {
   // Get some counts for the music randomizer. Only need to do it once per startup
   m1st = mp3.readFileCountsInFolder(1) + mp3.readFileCountsInFolder(2) + 1;
   mCnt = mp3.readFileCountsInFolder(3);
+  s1st = 3; // First two sound effects are reserved
+  sCnt = mp3.readFileCountsInFolder(2); // First two sound effects are reserved
+  
   // Set the volume immediately
   chkVolume();
   // Randomize the music folder
@@ -740,6 +741,7 @@ void setup() {
   mouthAnimTimer.start(mouthFrameSpeed);
   sonarTimer.start(100);
   mouthScrollText(F("Zappette is alive!"),false);
+  playSound(2,false);
 }
 
 void loop() {
@@ -842,7 +844,7 @@ void chkSonar()
     //Play sound?
     eyeAngry();
     mouthAngry();
-    playSound(3,false);
+    playSound(1,false);
   }
 }
 void chkBright()
@@ -973,6 +975,9 @@ void playMusic(bool prev)
 
 void playSound(int sndFile, bool isMouth) {
   if (!isMusic) {
+    if (sndFile == 0) {
+      sndFile = random(s1st, sCnt+1);
+    }
     mp3.playFolder(2, sndFile);
     if (isMouth) {
       isStopMouth = true;
@@ -1003,11 +1008,11 @@ void randMusic() {
 
 void chkButtons()
 {
-  if (setABtn.stateChanged() && setABtn.state()) {
-    playSound(1,true);
+  if (hrBtn.stateChanged() && hrBtn.state() && !setTBtn.state() && !setABtn.state()) {
+    playSound(0,true);
   }
-  if (setTBtn.stateChanged() && setTBtn.state()) {
-    playSound(2,true);
+  if (mnBtn.stateChanged() && mnBtn.state() && !setTBtn.state() && !setABtn.state()) {
+    playSound(0,true);
   }
   
   // Only allow time changes if the setBtn is pressed AND held
