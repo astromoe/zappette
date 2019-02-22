@@ -26,7 +26,7 @@ Adafruit_8x8matrix rEye   = Adafruit_8x8matrix(); // right eye
 Adafruit_7segment clck    = Adafruit_7segment(); // Clock
 
 // User Settings
-#define snzTime 1         // amount of mins for the initial snooze
+#define snzTime 5         // amount of mins for the initial snooze
 #define snzDegrade 1      // amount of mins for to degrade time by
 #define snzLmt 1          // number of times to loop before degrading
 #define snzUnlmt 1        // set to 1 if you want unlimited snoozing or zero for degraded snooze
