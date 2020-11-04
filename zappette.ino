@@ -2,10 +2,6 @@
    Zappette Robot Alarm Clock
    12/07/2018
    Kevin Stephens
-
-  Todo:
-  - Rewire alarm switch to independent power
-  
  ***/
 // Load libraries
 #include <Wire.h>
@@ -30,12 +26,13 @@ Adafruit_7segment clck    = Adafruit_7segment(); // Clock
 #define snzDegrade 1      // amount of mins for to degrade time by
 #define snzLmt 1          // number of times to loop before degrading
 #define snzUnlmt 1        // set to 1 if you want unlimited snoozing or zero for degraded snooze
-#define sleepHour 20      // Hour at which system goes to sleep (meaning we close eyes and stop making sounds)
+#define sleepHour 19      // Hour at which system goes to sleep (meaning we close eyes and stop making sounds)
+#define sleepMin 45       // Minute at which the system goes to sleeps
 #define wakeHour 7        // Hour at which system wakes up
 #define QSIZE 10          // Size of the music queue to randomize
 #define EYEFRAMESPEED 75  // The speed of frames for eye animation
 #define MAX_DISTANCE 200  // Maximum distance we want to ping for (in centimeters). Maximum sensor distance is rated at 400-500cm.
-#define MAX_VOLUME 30     // Maximum volume. Too high causes short overload
+#define MAX_VOLUME 28  // Maximum volume. Too high causes short overload
 // Set up our pins
 #define volPin 0     // Analog pin 0
 #define brPin 1      // Analog pin 1
@@ -132,6 +129,7 @@ static const int *lEyeFrameMap;    // Pointer to array of left frames Mp
 bool PIRon;      // PIR sensor state
 bool PIRlast;    // PIR last state
 int brtn = 0;    // Brightness
+int newBrtn = 0; // Temporary brightness
 bool isAsleep;   // True if it is sleep hours
 bool isShutdown; // True if we are shutdown (no face no sounds)
 DebounceFilter shutdownBtn;
@@ -756,7 +754,7 @@ void loop() {
   RTC.getTime();
   if ( RTC.second != lSec )
   {
-    lSec = RTC.second; // Not the last second so we can update time every second
+    lSec = RTC.second; // Note the last second so we can update time every second
     if (!isEyeAnim && RTC.second % 10 == 0 && !isAsleep && !alarmOn && !isShutdown)
     {
       eyeRandomAct(); // Animate the eyes every 30 seconds
@@ -794,7 +792,7 @@ void chkShutdown()
 
 void chkSleep()
 {
-  if ((RTC.hour >= sleepHour || RTC.hour < wakeHour)&& !isAsleep)
+  if (((RTC.hour == sleepHour && RTC.minute >= sleepMin) || RTC.hour > sleepHour || RTC.hour < wakeHour)&& !isAsleep)
   {
     isAsleep = true;
     mouthAsleep();
@@ -849,9 +847,16 @@ void chkSonar()
 }
 void chkBright()
 {
-  int tmp = map(constrain(analogRead(brPin), 0, 350), 0, 350, 0, 15);
-  if (tmp > 0 && tmp > brtn + 1 || brtn + 1 > tmp) {
-    brtn = tmp;
+  if (!isAsleep) {
+    int tmp = map(constrain(analogRead(brPin), 0, 350), 0, 350, 0, 15);
+    if (tmp > 0 && tmp > brtn + 1 || brtn + 1 > tmp)
+      newBrtn = tmp;
+  } else {
+    newBrtn = 1;
+  }
+  if (brtn != newBrtn) {
+    brtn = newBrtn;
+    Serial.println("Changing brightness");
     // If brightness has changed then update everything
     rEye.setBrightness(brtn);
     lEye.setBrightness(brtn);
@@ -895,6 +900,7 @@ void handleMP3msg(uint8_t type, int value) {
 
 void chkVolume()
 {
+  // range 10-30
   int val = analogRead(0) / MAX_VOLUME;    // read the value from the sensor
   if (val > MAX_VOLUME) {
     val = MAX_VOLUME;
@@ -1471,7 +1477,8 @@ void startMouthCycle()
 */
 void chkMouthAnim()
 {
-  if (isMouthAnim && !isShutdown) {
+  /* Made isAsleep clear the eyes at night */
+  if (isMouthAnim && !isShutdown && !isAsleep) {
     if (mouthAnimTimer.isFinished())
     {
       mouth.clear();
@@ -1499,7 +1506,7 @@ void chkMouthAnim()
       mouthAnimTimer.start(mouthFrameSpeed);
     }
   }
-  else if (isShutdown)
+  else if (isShutdown || isAsleep)
   {
     mouthClear();
   }
@@ -1777,6 +1784,9 @@ void chkEyeAnim() {
       if (eyeAnimPos >= eyeFrameCnt) {
         isEyeAnim = false;
         eyeFrameSpeed = EYEFRAMESPEED; // Reset to the default
+        if (isAsleep) {
+          eyeClear();
+        }
       }
       eyeAnimTimer.start(eyeFrameSpeed);
     }
